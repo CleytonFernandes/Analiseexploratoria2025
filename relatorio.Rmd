@@ -1,0 +1,221 @@
+---
+title: "Análise Exploratória de Dados - AcemogluGlobalData"
+author: "Cleyton Fernandes"
+date: "12 de abril de 2025"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Carregar pacotes necessários
+library(ggplot2)
+library(summarytools)
+library(ggpubr)
+library(mice)
+library(tidyr)
+library(ggcorrplot)
+```
+## Introdução
+
+Nessa disciplina, aprofundamos nossos conhecimentos na linguagem R e em estatística para realizar análises descritivas de bases de dados, uma tarefa essencial para o dia-a-dia de um cientista de dados. Este relatório apresenta uma análise exploratória da base de dados AcemogluGlobalData, utilizando o RMarkdown para documentar o processo e os resultados.
+
+A base de dados foi disponibilizada pelo professor, a meu pedido, pois não consegui localizar uma base adequada no Kaggle que atendesse aos requisitos do projeto. A análise será realizada com o objetivo de explorar as variáveis, identificar padrões, tratar dados faltantes e criar um dashboard interativo com Shiny. Todos os códigos serão exibidos no relatório, conforme solicitado.
+
+Os códigos e o relatório final estão disponíveis no repositório GitHub: https://github.com/CleytonFernandes/Analiseexploratoria2025.
+
+
+## Escolha da Base de Dados
+
+Escolhi a base de dados `AcemogluGlobalData.csv`, que foi disponibilizada pelo professor a meu pedido, pois não consegui localizar uma base adequada no Kaggle que atendesse aos requisitos do projeto. A base contém dados de diversos países ao longo de vários anos, com variáveis relacionadas a democracia, economia e demografia. As variáveis de interesse são:
+
+- `dem_ind`: Índice de democracia (numérico, entre 0 e 1).
+- `log_gdppc`: Logaritmo do PIB per capita (numérico).
+- `log_pop`: Logaritmo da população (numérico).
+- `age_1` a `age_5`: Proporções de faixas etárias (0-14, 15-29, 30-44, 45-59, 60+, todas numéricas).
+- `educ`: Nível de educação (numérico).
+- `age_median`: Idade mediana da população (numérico).
+
+A base contém 13 variáveis no total, sendo 10 delas numéricas, o que atende ao requisito de ter pelo menos 4 variáveis numéricas. Além disso, a base possui dados faltantes em várias variáveis (como `log_gdppc` e `log_pop`), o que é necessário para a análise de completude e imputação de dados. A escolha dessa base é relevante porque permite explorar relações entre democracia, desenvolvimento econômico e características demográficas, temas importantes na atualidade.
+
+## Objetivo da Análise e Resultados Esperados
+
+O objetivo desta análise exploratória é entender as características da base `AcemogluGlobalData`, identificar padrões e relações entre as variáveis, verificar se as variáveis seguem uma distribuição normal, tratar dados faltantes e criar um dashboard interativo com Shiny. Especificamente, pretendo:
+
+- Calcular estatísticas descritivas para entender a distribuição das variáveis.
+- Identificar correlações entre variáveis, como a relação entre o índice de democracia e o PIB per capita.
+- Verificar se as variáveis seguem uma distribuição normal, usando histogramas, gráficos Q-Q e testes estatísticos.
+- Tratar dados faltantes para melhorar a qualidade da base.
+- Criar um dashboard interativo que permita visualizar as variáveis de forma dinâmica.
+
+Espero encontrar correlações significativas, como uma associação positiva entre o índice de democracia e o PIB per capita, e identificar quais variáveis se aproximam de uma distribuição normal. Além disso, espero que o dashboard facilite a exploração visual dos dados.
+
+## Carregamento dos Dados
+
+Carrego a base de dados, ajusto os tipos de dados e renomeio as variáveis para nomes mais descritivos.
+
+```{r}
+dados <- read.csv("C:/Users/cleyt/OneDrive/Área de Trabalho/MBA em Data Science INFNET/Análise exploratória de dados/Projeto da Disciplina/AcemogluGlobalData.csv", 
+                  sep = ";", dec = ",", stringsAsFactors = FALSE, encoding = "UTF-8")
+
+# Converter colunas para numérico, primeiro para character para evitar problemas com fatores
+dados$dem_ind <- as.numeric(as.character(dados$dem_ind))
+dados$log_gdppc <- as.numeric(as.character(dados$log_gdppc))
+dados$log_pop <- as.numeric(as.character(dados$log_pop))
+dados$age_median <- as.numeric(as.character(dados$age_median))
+
+# Renomear as variáveis
+names(dados) <- c("País", "Ano", "Índice de Democracia", "Log do PIB per Capita", "Log da População", 
+                  "Proporção Idade 0-14", "Proporção Idade 15-29", "Proporção Idade 30-44", 
+                  "Proporção Idade 45-59", "Proporção Idade 60+", "Nível de Educação", 
+                  "Idade Mediana", "Código do País")
+
+head(dados)
+```
+## Matriz de Espalhamento
+
+Crio uma matriz de espalhamento para visualizar correlações entre as variáveis Índice de Democracia, Log do PIB per Capita, Log da População e Idade Mediana.
+
+pairs(dados[, c("Índice de Democracia", "Log do PIB per Capita", "Log da População", "Idade Mediana")], 
+      main = "Matriz de Espalhamento")
+
+Através da inspeção visual, as variáveis Log do PIB per Capita e Idade Mediana parecem mais correlacionadas, pois os pontos formam uma linha ascendente, indicando uma correlação positiva. Isso sugere que países com maior PIB per capita tendem a ter uma idade mediana mais alta, possivelmente devido a melhores condições de vida e maior expectativa de vida.
+
+## Estatísticas Descritivas
+
+Obtenho as estatísticas descritivas das variáveis numéricas usando a função `descr()` do pacote `summarytools`.
+
+```{r}
+# Selecionar apenas colunas numéricas
+dados_numericos <- dados[, c("Índice de Democracia", "Log do PIB per Capita", "Log da População", 
+                            "Proporção Idade 0-14", "Proporção Idade 15-29", "Proporção Idade 30-44", 
+                            "Proporção Idade 45-59", "Proporção Idade 60+", "Nível de Educação", 
+                            "Idade Mediana")]
+descr(dados_numericos)
+```
+A tabela acima mostra as estatísticas descritivas, como média, desvio padrão, mínimo e máximo, para cada variável numérica. Por exemplo, podemos observar que o Índice de Democracia varia de 0 a 1, com uma média que indica o nível médio de democracia nos países da base.
+
+## Explicação da Distribuição Normal
+
+A distribuição normal, que também é chamada de curva de Gauss, é uma distribuição de probabilidade que tem o formato de um sino. Aprendi que ela é muito importante em estatística porque muitos dados na natureza seguem esse padrão. Ela é definida pela média, que é o valor central, e pelo desvio padrão, que mostra o quanto os dados estão espalhados. A maior parte dos dados (cerca de 68%) fica a 1 desvio padrão da média, 95% a 2 desvios padrão, e 99,7% a 3 desvios padrão. Além disso, a curva é simétrica, ou seja, os dados se distribuem igualmente dos dois lados da média.
+
+## Histogramas
+
+Crio histogramas para visualizar a distribuição de todas as variáveis numéricas usando o pacote `ggplot2`. Escolhi um `binwidth` inicial de 0,1 para variáveis como `Índice de Democracia`, que varia de 0 a 1, mas uso `scales = "free"` para ajustar automaticamente os intervalos e escalas para variáveis com ranges diferentes, como `Log do PIB per Capita` e `Idade Mediana`.
+
+```{r}
+# Carregar o pacote tidyr para transformar os dados
+library(tidyr)
+
+# Converter o dataframe numérico para o formato longo (long format)
+dados_numericos_long <- pivot_longer(dados_numericos, cols = everything(), names_to = "variable", values_to = "value")
+
+# Criar histogramas para todas as variáveis numéricas
+ggplot(dados_numericos_long, aes(x = value)) + 
+  geom_histogram(binwidth = 0.1) +
+  facet_wrap(~variable, scales = "free") +
+  labs(title = "Histogramas das Variáveis Numéricas")
+```
+
+Os histogramas mostram a distribuição de cada variável. Por exemplo, o histograma de Índice de Democracia parece assimétrico, com muitos valores próximos de 0 ou 1, enquanto Idade Mediana tem um formato mais próximo de uma curva em sino.
+
+
+
+## Gráficos Q-Q
+
+Crio gráficos Q-Q para avaliar a normalidade das variáveis numéricas usando o pacote `ggpubr`.
+
+```{r}
+# Criar gráficos Q-Q para todas as variáveis numéricas
+ggplot(dados_numericos_long, aes(sample = value)) +
+  stat_qq() +
+  stat_qq_line() +
+  facet_wrap(~variable, scales = "free") +
+  labs(title = "Gráficos Q-Q das Variáveis Numéricas")
+```
+Os gráficos Q-Q mostram como os quantis das variáveis se comparam aos quantis de uma distribuição normal. Se os pontos seguem a linha diagonal, a variável é aproximadamente normal. Observo que variáveis como Índice de Democracia desviam bastante da linha, enquanto Idade Mediana parece mais próxima de uma distribuição normal.
+
+## Teste de Normalidade
+
+Realizo o teste de Shapiro-Wilk para verificar a normalidade das variáveis numéricas.
+
+```{r}
+# Aplicar o teste de Shapiro-Wilk a cada variável numérica
+for (var in names(dados_numericos)) {
+  cat("Teste de Shapiro-Wilk para", var, "\n")
+  # Remover NAs antes do teste
+  valores <- na.omit(dados_numericos[[var]])
+  # O teste Shapiro-Wilk só pode ser aplicado a amostras com 3 a 5000 observações
+  if (length(valores) >= 3 & length(valores) <= 5000) {
+    print(shapiro.test(valores))
+  } else {
+    cat("Amostra muito pequena ou muito grande para o teste Shapiro-Wilk.\n")
+  }
+  cat("\n")
+}
+```
+
+Os resultados mostram o valor-p para cada variável. Se o valor-p for menor que 0,05, rejeitamos a hipótese de normalidade. Por exemplo, para Índice de Democracia, o valor-p é muito baixo, indicando que a variável não é normal.
+
+## Conclusão sobre Normalidade
+
+Com base nos histogramas, gráficos Q-Q e testes de Shapiro-Wilk, concluo que a maioria das variáveis não segue uma distribuição normal. Os histogramas de variáveis como `Índice de Democracia` e `Log da População` não apresentam formato de sino, os gráficos Q-Q mostram desvios significativos da linha diagonal para essas variáveis, e os valores-p dos testes de Shapiro-Wilk são menores que 0,05 para quase todas as variáveis, rejeitando a hipótese de normalidade. No entanto, a variável `Idade Mediana` parece mais próxima de uma distribuição normal, com um histograma mais simétrico e um gráfico Q-Q que segue mais de perto a linha diagonal, embora o teste de Shapiro-Wilk ainda indique um valor-p baixo.
+
+## Completude de Dados
+
+Completude de dados significa que todas as informações esperadas em uma base de dados estão presentes, ou seja, não há valores faltantes. Por exemplo, se uma variável como `Log do PIB per Capita` deveria ter um valor para cada país e ano, mas alguns estão em branco (NA), a base não está completa para essa variável. A completude é importante porque dados faltantes podem prejudicar a análise, levando a resultados incorretos ou incompletos.
+
+## Impacto dos Dados Faltantes
+
+Dados faltantes podem ter vários impactos na análise exploratória. Primeiro, eles reduzem o número de observações disponíveis para análise, o que pode diminuir a precisão dos resultados. Por exemplo, se muitos países não têm valores para `Log do PIB per Capita`, não posso analisar a relação entre essa variável e o `Índice de Democracia` para esses países. Segundo, dados faltantes podem introduzir viés, especialmente se os valores ausentes não forem aleatórios (por exemplo, se países mais pobres tendem a não reportar o PIB). Por fim, eles dificultam a interpretação de gráficos e testes estatísticos, como a matriz de espalhamento, que ignora linhas com valores ausentes.
+
+## Índice de Completude
+
+Calculo o índice de completude para cada variável numérica da base.
+
+```{r}
+# Número total de observações
+n_total <- nrow(dados_numericos)
+
+# Calcular o número de valores ausentes por variável
+valores_ausentes <- colSums(is.na(dados_numericos))
+
+# Calcular o índice de completude (porcentagem de valores não ausentes)
+completude <- (1 - valores_ausentes / n_total) * 100
+
+# Exibir o resultado
+data.frame(Variável = names(dados_numericos), Completude = completude)
+```
+A tabela acima mostra a porcentagem de completude para cada variável. Variáveis como Log do PIB per Capita e Log da População têm muitos valores ausentes, o que indica baixa completude.
+
+## Imputação de Dados
+
+Realizo a imputação de dados faltantes usando o pacote `mice` com o método PMM (Predictive Mean Matching).
+
+```{r}
+# Imputação de dados com o pacote mice
+library(mice)
+dados_imputados <- mice(dados_numericos, m = 5, method = "pmm", maxit = 50, seed = 123)
+dados_completos <- complete(dados_imputados)
+
+# Verificar se ainda há valores ausentes
+colSums(is.na(dados_completos))
+```
+Após a imputação, não há mais valores ausentes no dataframe dados_completos, que será usado nas próximas análises.
+
+## Dashboard Shiny
+
+Criei um dashboard interativo com o pacote Shiny, que permite selecionar uma variável, escolher a cor da linha e ajustar os limites dos eixos X e Y. Abaixo está um print da tela do dashboard:
+
+![Print do Dashboard Shiny](dashboard_shiny.png)
+
+
+## Referências
+
+1. Wikipédia - Distribuição Normal: [https://en.wikipedia.org/wiki/Normal_distribution](https://en.wikipedia.org/wiki/Normal_distribution)  
+   Utilizei esta página para entender melhor as características da distribuição normal e escrever a explicação na seção correspondente.  
+2. Repositório GitHub do Projeto: [https://github.com/CleytonFernandes/Analiseexploratoria2025](https://github.com/CleytonFernandes/Analiseexploratoria2025)  
+   Todos os códigos do projeto, incluindo o arquivo RMarkdown (`relatorio.Rmd`) e o aplicativo Shiny (`app.R`), estão disponíveis neste repositório.  
+3. Documentação do Pacote MICE: [https://cran.r-project.org/web/packages/mice/mice.pdf](https://cran.r-project.org/web/packages/mice/mice.pdf)  
+   Consultei a documentação oficial do pacote MICE para entender como realizar a imputação de dados faltantes.  
+4. Documentação do Pacote Shiny: [https://shiny.rstudio.com/](https://shiny.rstudio.com/)  
+   Usei a documentação oficial do Shiny para aprender a criar o dashboard interativo.
